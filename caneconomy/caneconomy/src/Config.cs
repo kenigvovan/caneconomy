@@ -13,16 +13,20 @@ namespace caneconomy.src
         public string DB_NAME = "caneconomy.db";
         public string GLOBAL_ACCOUNT_NAME = "global_account_server";
         
-        public OrderedDictionary<int, int> ID_TO_COINS_VALUES = new OrderedDictionary<int, int>()
+        public OrderedDictionary<int, decimal> ID_TO_COINS_VALUES = new OrderedDictionary<int, decimal>()
         {
 
         };
-        public OrderedDictionary<int, string> COINS_VALUES_TO_CODE = new OrderedDictionary<int, string>() {
+        public OrderedDictionary<decimal, string> COINS_VALUES_TO_CODE = new OrderedDictionary<decimal, string>() {
                 { 1, "gear-rusty" }
         };
         public bool SAVE_TO_GLOBAL_ACCOUNT = true;
         public bool CACHE_CHEST_BANK_CHUNKS_USED = true;
         public int MAX_AMOUNT_COINS_IN_STACK = 256;
-        
+        public decimal MAX_VIRTUAL_ACCOUNT_BALANCE = 100000;
+        public string SELECTED_ECONOMY_HANDLER = "VIRTUAL_MONEY";
+        public decimal DEFAULT_VALUE_VIRTUAL_ACCOUNT = 0;
+        public int MINUTES_BETWEEN_DB_SAVED = 1;
+
     }
 }

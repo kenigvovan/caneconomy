@@ -1,21 +1,24 @@
-﻿using System;
+﻿using caneconomy.src.implementations;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using static caneconomy.src.implementations.OperationResult;
 
 namespace caneconomy.src.accounts
 {
     public abstract class BaseMoneyAccount
     {
         string accountName;
-        double maxBalance;
+        public bool MarkedDirty { get; set; }
         public BaseMoneyAccount(string accountName)
         {
             this.accountName = accountName;
+            MarkedDirty = false;
         }
 
-        public double getBalance()
+        public virtual decimal getBalance()
         {
             return caneconomy.getHandler().getBalance(this.accountName);
         }
@@ -23,41 +26,18 @@ namespace caneconomy.src.accounts
         {
             accountName = str;
         }
-        public bool depositToOtherAccount(BaseMoneyAccount account, double amount)
+        public virtual EnumOperationResultState deposit(decimal val)
         {
-            if (getBalance() > amount)
-            {
-                return this.withdraw(amount) && account.deposit(amount);
-            }
-            return false;
+            return EnumOperationResultState.NONE;
         }
-        public bool deposit(double val)
+        public virtual EnumOperationResultState withdraw(decimal val, bool takeToGlobalAccount = false)
         {
-            if (maxBalance == 0)
-            {
-                caneconomy.getHandler().deposit(getName(), val);
-            }
-            if (maxBalance < caneconomy.getHandler().getBalance(getName()) + val)
-            {
-                return false;
-            }
-            else
-            {
-                caneconomy.getHandler().deposit(getName(), val);
-            }
-            return true;
+            return EnumOperationResultState.NONE;
         }
-        public bool withdraw(double val, bool takeToGlobalAccount = false)
+
+        public virtual decimal getMaxBalance()
         {
-            if (caneconomy.getHandler().withdraw(getName(), val))
-            {
-                if (caneconomy.config.SAVE_TO_GLOBAL_ACCOUNT && takeToGlobalAccount)
-                {
-                    caneconomy.getHandler().deposit(caneconomy.config.GLOBAL_ACCOUNT_NAME, val);
-                }
-                return true;
-            }
-            return false;
+            return 0;
         }
 
 

@@ -11,13 +11,21 @@ using Vintagestory.API.Config;
 
 namespace caneconomy.src.db
 {
-    public class SQLiteDatabaseHanlder
+    public class SQLiteDatabaseHanlder: DatabaseHandler
     {
         ConcurrentQueue<QuerryInfo> queryQueue = new ConcurrentQueue<QuerryInfo>();
         private SqliteConnection SqliteConnection = null;
-
-        public SQLiteDatabaseHanlder() : base()
+        string INSERT_QUERRY;
+        string UPDATE_QUERRY;
+        string DELETE_QUERRY;
+        public delegate void OnReadAllItems(SqliteConnection sqliteConnection);
+        public OnReadAllItems OnReadAction = null;
+        public SQLiteDatabaseHanlder(string insert_q, string update_q, string delete_q, string create_table_q, OnReadAllItems OnReadAction) : base()
         {
+            INSERT_QUERRY = insert_q;
+            UPDATE_QUERRY = update_q;
+            DELETE_QUERRY = delete_q;
+            this.OnReadAction = OnReadAction;
             string folderPath;
             if (caneconomy.config.PATH_TO_DB_AND_JSON_FILES.Length == 0)
             {
@@ -34,6 +42,10 @@ namespace caneconomy.src.db
             {
                 SqliteConnection.Open();
             }
+
+            SqliteCommand com = SqliteConnection.CreateCommand();
+            com.CommandText = create_table_q;
+            com.ExecuteNonQuery();
 
             caneconomy.sapi.Event.Timer((() =>
             {
@@ -58,23 +70,22 @@ namespace caneconomy.src.db
             }
             ), 0.5);
         }
-        public bool updateDatabase(QuerryInfo querry)
+        public override void readALL()
+        {
+            if(OnReadAction != null)
+            {
+                OnReadAction(this.SqliteConnection);
+            }
+        }
+        public override bool updateDatabase(QuerryInfo querry)
         {
             if (this.SqliteConnection.State != System.Data.ConnectionState.Open)
             {
                 SqliteConnection.Open();
             }
-            string querryString = "";
-            switch (querry.targetTable)
-            {
-                case "BANKS":
-                    querryString = QuerryTemplates.UPDATE_BANK;
-                    break;
-            }
-
 
             int rowsChanged;
-            using (var cmd = new SqliteCommand(querryString, SqliteConnection))
+            using (var cmd = new SqliteCommand(UPDATE_QUERRY, SqliteConnection))
             {
                 foreach (var pair in querry.parameters)
                 {
@@ -89,23 +100,15 @@ namespace caneconomy.src.db
             }
             return true;
         }
-        public bool deleteFromDatabase(QuerryInfo querry)
+        public override bool deleteFromDatabase(QuerryInfo querry)
         {
             if (this.SqliteConnection.State != System.Data.ConnectionState.Open)
             {
                 SqliteConnection.Open();
             }
-            string querryString = "";
-            switch (querry.targetTable)
-            {
-                case "BANKS":
-                    querryString = QuerryTemplates.DELETE_BANK;
-                    break;           
-            }
-
 
             int rowsChanged;
-            using (var cmd = new SqliteCommand(querryString, SqliteConnection))
+            using (var cmd = new SqliteCommand(DELETE_QUERRY, SqliteConnection))
             {
                 foreach (var pair in querry.parameters)
                 {
@@ -117,24 +120,15 @@ namespace caneconomy.src.db
             return rowsChanged > 0;
 
         }
-
-        public bool insertToDatabase(QuerryInfo querry)
+        public override bool insertToDatabase(QuerryInfo querry)
         {
             if (this.SqliteConnection.State != System.Data.ConnectionState.Open)
             {
                 SqliteConnection.Open();
             }
-            string querryString = "";
-            switch (querry.targetTable)
-            {
-                case "BANKS":
-                    querryString = QuerryTemplates.INSERT_BANK;
-                    break;
-            }
-
 
             int rowsChanged;
-            using (var cmd = new SqliteCommand(querryString, SqliteConnection))
+            using (var cmd = new SqliteCommand(INSERT_QUERRY, SqliteConnection))
             {
                 foreach (var pair in querry.parameters)
                 {
@@ -145,6 +139,5 @@ namespace caneconomy.src.db
 
             return rowsChanged > 0;
         }
-
     }
 }

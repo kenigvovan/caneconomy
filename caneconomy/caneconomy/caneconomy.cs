@@ -2,6 +2,7 @@
 using caneconomy.src.db;
 using caneconomy.src.harmony;
 using caneconomy.src.implementations.RealMoney;
+using caneconomy.src.implementations.VirtualMoney;
 using caneconomy.src.interfaces;
 using HarmonyLib;
 using Microsoft.Data.Sqlite;
@@ -30,20 +31,11 @@ namespace caneconomy
         
         public delegate void OnBlockRemovedBlockEntityOpenableContainerDelegate(BlockEntityOpenableContainer be);
         public static OnBlockRemovedBlockEntityOpenableContainerDelegate OnBlockRemovedBlockEntityOpenableContainer = null;
-        static SQLiteDatabaseHanlder databaseHandler;
-        public static SQLiteDatabaseHanlder getDatabaseHandler()
-        {
-            return databaseHandler;
-        }
+       
         public override void StartServerSide(ICoreServerAPI api)
         {
             sapi = api;
             loadConfig();
-            loadDatabase();
-            /* if (config.SELECTED_ECONOMY_HANDLER == "REAL_MONEY")
-             {
-                 economyHandler = new RealMoneyEconomyHandler();
-             }*/
             economyHandler = new RealMoneyEconomyHandler();
             harmonyInstance = new Harmony(harmonyID);
 
@@ -52,18 +44,7 @@ namespace caneconomy
            // harmonyInstance.PatchAll();
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, getMoneyItemID);
-        }
-        public static bool loadDatabase()
-        {
-            try
-            {
-                databaseHandler = new SQLiteDatabaseHanlder();
-            }
-            catch (SqliteException ex)
-            {
-                return false;
-            }
-            return false;
+            sapi.Event.ServerRunPhase(EnumServerRunPhase.ModsAndConfigReady, selectImplementationIfNeeded);
         }
         private void loadConfig()
         {
@@ -75,38 +56,27 @@ namespace caneconomy
             sapi.StoreModConfig<Config>(config, this.Mod.Info.ModID + ".json");
             return;
         }
+        public static void selectImplementationIfNeeded()
+        {
+            if(config.SELECTED_ECONOMY_HANDLER == "REAL_MONEY") 
+            {
+                setHandler(new RealMoneyEconomyHandler());
+            }
+            else if (config.SELECTED_ECONOMY_HANDLER == "VIRTUAL_MONEY")
+            {
+                setHandler(new VirtualMoneyEconomyHandler());
+            }
+        }
 
         public static void getMoneyItemID()
         {
-            foreach (var itemVTC in caneconomy.config.COINS_VALUES_TO_CODE)
+            foreach (var itemVTC in config.COINS_VALUES_TO_CODE)
             {
-                if (itemVTC.Value.Contains(":"))
-                {
-                    string[] item_name = itemVTC.Value.Split(':');
-                    foreach (var it in caneconomy.sapi.World.Items)
-                    {
-                        if (it.Code != null && it.Id == 2452)
-                        {
-                            var o = 2;
-                        }
+                Item[] arrayResult = sapi.World.SearchItems(new AssetLocation(itemVTC.Value));
 
-                        if (it.Code != null && it.Code.Domain.Equals(item_name[0]) && it.Code.Path.Equals(item_name[1]))
-                        {
-                            caneconomy.config.ID_TO_COINS_VALUES.Add(it.Id, itemVTC.Key);
-                            //break;
-                        }
-                    }
-                }
-                else
+                if(arrayResult.Length > 0)
                 {
-                    foreach (var it in caneconomy.sapi.World.Items)
-                    {
-                        if (it.Code != null && it.Code.Path.Equals(itemVTC.Value))
-                        {
-                            caneconomy.config.ID_TO_COINS_VALUES.Add(it.Id, itemVTC.Key);
-                            break;
-                        }
-                    }
+                    config.ID_TO_COINS_VALUES.Add(arrayResult[0].Id, itemVTC.Key);
                 }
             }
         }

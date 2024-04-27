@@ -1,10 +1,12 @@
-﻿using caneconomy.src.auxiliary;
+﻿using caneconomy.src.accounts;
+using caneconomy.src.auxiliary;
 using caneconomy.src.db;
 using caneconomy.src.interfaces;
 using Microsoft.Data.Sqlite;
 using System;
 using System.Collections.Generic;
 using System.Data;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
@@ -15,29 +17,98 @@ using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
+using static caneconomy.src.implementations.OperationResult;
 
 namespace caneconomy.src.implementations.RealMoney
 {
     public class RealMoneyEconomyHandler : EconomyHandler
     {
-        private bool loaded;
-
+        DatabaseHandler databaseHandler;
         //(Players UID/CITY account name/nation account name): (vector - coords where chest is)
         Dictionary<string, RealBankInfo> mapCityBanks;
         //chunk coords (real coords /16) and list of dicts for banks in that plot
         //if list became empty we delete key from dict
         Dictionary<Vec2i, List<Tuple<string, Vec3i>>> auxBanksDictionary;
-
         HashSet<string> dirtyAccounts;
         public RealMoneyEconomyHandler()
         {
             mapCityBanks = new Dictionary<string, RealBankInfo>();
             auxBanksDictionary = new Dictionary<Vec2i, List<Tuple<string, Vec3i>>>();
             dirtyAccounts = new HashSet<string>();
-            this.InitServer();
-            caneconomy.setHandler(this);
-        }
+            
+            
 
+            try
+            {
+                databaseHandler = new SQLiteDatabaseHanlder(QuerryTemplates.INSERT_BANK, QuerryTemplates.UPDATE_BANK, QuerryTemplates.DELETE_BANK,
+                                                            "CREATE TABLE IF NOT EXISTS BANKS(" +
+                                                            "x INTEGER," +
+                                                            "y INTEGER," +
+                                                            "z INTEGER," +
+                                                            "accountname TEXT," +
+                                                            "lastknownvalue TEXT," +
+                                                            "validcachedvalue TEXT," +
+                                                            "dirty INTEGER DEFAULT 0," +
+                                                            "PRIMARY KEY (accountname));",
+                                                            ForAllRead);
+            }
+            catch (SqliteException ex)
+            {
+            }
+            databaseHandler.readALL();
+            caneconomy.setHandler(this);
+            this.InitServer();
+        }
+        public void ForAllRead(SqliteConnection sqliteConnection)
+        {
+            SqliteCommand com = sqliteConnection.CreateCommand();
+            com.CommandText = "SELECT * FROM BANKS";
+            using (var reader = com.ExecuteReader())
+            {
+                var dt = new DataTable();
+
+                dt.Load(reader);
+                foreach (DataRow it in dt.Rows)
+                {
+
+                    int x = int.Parse(it["x"].ToString());
+                    int y = int.Parse(it["y"].ToString());
+                    int z = int.Parse(it["z"].ToString());
+                    string name = it["accountname"].ToString();
+                    mapCityBanks.Add(name,
+                        new RealBankInfo(it["dirty"].ToString().Equals("0")
+                                                                                ? false
+                                                                                : true,
+                                            decimal.Parse(it["lastknownvalue"].ToString()),
+                                            decimal.Parse(it["validcachedvalue"].ToString()),
+                                            new Vec3i(x, y, z),
+                                            name));
+                    if (it["dirty"].ToString().Equals("0") ? false : true)
+                    {
+                        dirtyAccounts.Add(name);
+                    }
+
+                    //WE DON'T NEED TO TRACK GLOBAL ACCOUNT CHEST - THERE ISN'T ANY
+                    if (name.Equals(caneconomy.config.GLOBAL_ACCOUNT_NAME))
+                    {
+                        continue;
+                    }
+
+                    List<Tuple<string, Vec3i>> tmpList;
+                    if (auxBanksDictionary.TryGetValue(new Vec2i(x, z), out tmpList))
+                    {
+                        auxBanksDictionary[new Vec2i(x / 32, z / 32)].Add(new Tuple<string, Vec3i>(name, new Vec3i(x, y, z)));
+                    }
+                    else
+                    {
+                        auxBanksDictionary[new Vec2i(x / 32, z / 32)] = new List<Tuple<string, Vec3i>>
+                        {
+                            new Tuple<string, Vec3i>(name, new Vec3i(x, y, z))
+                        };
+                    }
+                }
+            }
+        }
         public Dictionary<Vec2i, List<Tuple<string, Vec3i>>> getAuxBanksDictionary()
         {
             return auxBanksDictionary;
@@ -59,8 +130,6 @@ namespace caneconomy.src.implementations.RealMoney
             realBankInfo = null;
             return false;
         }
-
-
         public bool AddDirtyAccount(string accountName)
         {
             return dirtyAccounts.Add(accountName);
@@ -76,10 +145,6 @@ namespace caneconomy.src.implementations.RealMoney
         }
         public void InitServer()
         {
-            if (!initTables())
-            {
-                //caneconomy.sapi.Logger.Error("RealMoneyAdapter error during SQL initialization.");
-            }
             checkForGlobalAccount();
             caneconomy.sapi.Event.ChunkColumnLoaded += onChunkColumnLoaded;
             caneconomy.sapi.Event.ChunkColumnUnloaded += onChunkColumnUnload;
@@ -93,122 +158,26 @@ namespace caneconomy.src.implementations.RealMoney
                 if (!mapCityBanks.ContainsKey(caneconomy.config.GLOBAL_ACCOUNT_NAME))
                 {
                     mapCityBanks.Add(caneconomy.config.GLOBAL_ACCOUNT_NAME, new RealBankInfo(false, 0, 0, new Vec3i(-1, -1, -1), caneconomy.config.GLOBAL_ACCOUNT_NAME));
-                    if (caneconomy.getDatabaseHandler() is SQLiteDatabaseHanlder sqlhandler)
+                    
+                    Dictionary<string, object> dict = new Dictionary<string, object>
                     {
-                        Dictionary<string, object> dict = new Dictionary<string, object>
-                        {
-                            { "accountname", caneconomy.config.GLOBAL_ACCOUNT_NAME },
-                            { "x", -1 },
-                            { "y", -1 },
-                            { "z", -1 },
-                            { "dirty", 0 },
-                            { "lastknownvalue", 0 },
-                            { "validcachedvalue", 0 }
-                        };
-                        List<string> li = new List<string> { "accountname" };
+                        { "accountname", caneconomy.config.GLOBAL_ACCOUNT_NAME },
+                        { "x", -1 },
+                        { "y", -1 },
+                        { "z", -1 },
+                        { "dirty", 0 },
+                        { "lastknownvalue", 0 },
+                        { "validcachedvalue", 0 }
+                    };
+                    List<string> li = new List<string> { "accountname" };
 
-                        sqlhandler.insertToDatabase(new QuerryInfo("BANKS", QuerryType.INSERT, dict));
-                    }
+                    databaseHandler.insertToDatabase(new QuerryInfo(QuerryType.INSERT, dict));
+                    
                 }
             }
         }
-        public bool isLoaded()
-        {
-            return loaded;
-        }
-        public bool initTables()
-        {
-            try
-            {
-                string cs;
-                if (caneconomy.config.PATH_TO_DB_AND_JSON_FILES.Length == 0)
-                {
-                    cs = @"" + Path.Combine(GamePaths.ModConfig, caneconomy.config.DB_NAME);
-                }
-                else
-                {
-                    cs = Path.Combine(caneconomy.config.PATH_TO_DB_AND_JSON_FILES, caneconomy.config.DB_NAME);
-                }
-
-                cs.Replace(@"\\", @"\");
-                SqliteConnection connection;
-                connection = new SqliteConnection(@"Data Source=" + cs);
-                connection.Open();
-                SqliteCommand com = connection.CreateCommand();
-
-                com.CommandText = "CREATE TABLE IF NOT EXISTS BANKS(" +
-                "x INTEGER," +
-                "y INTEGER," +
-                "z INTEGER," +
-                "accountname TEXT," +
-                "lastknownvalue REAL DEFAULT 0," +
-                "validcachedvalue REAL DEFAULT 0," +
-                "dirty INTEGER DEFAULT 0," +
-                "PRIMARY KEY (accountname));";
-                com.ExecuteNonQuery();
-
-                com.CommandText = "SELECT * FROM BANKS";
-
-
-
-                using (var reader = com.ExecuteReader())
-                {
-                    var dt = new DataTable();
-
-                    dt.Load(reader);
-                    foreach (DataRow it in dt.Rows)
-                    {
-
-                        int x = int.Parse(it["x"].ToString());
-                        int y = int.Parse(it["y"].ToString());
-                        int z = int.Parse(it["z"].ToString());
-                        string name = it["accountname"].ToString();
-                        mapCityBanks.Add(name,
-                            new RealBankInfo(it["dirty"].ToString().Equals("0")
-                                                                                 ? false 
-                                                                                 : true,
-                                             double.Parse(it["lastknownvalue"].ToString()),
-                                             double.Parse(it["validcachedvalue"].ToString()),
-                                             new Vec3i(x, y, z),
-                                             name));
-                        if (it["dirty"].ToString().Equals("0") ? false : true)
-                        {
-                            dirtyAccounts.Add(name);
-                        }
-
-                        //WE DON'T NEED TO TRACK GLOBAL ACCOUNT CHEST - THERE ISN'T ANY
-                        if (name.Equals(caneconomy.config.GLOBAL_ACCOUNT_NAME))
-                        {
-                            continue;
-                        }
-
-                        List<Tuple<string, Vec3i>> tmpList;
-                        if (auxBanksDictionary.TryGetValue(new Vec2i(x, z), out tmpList))
-                        {
-                            auxBanksDictionary[new Vec2i(x / 32, z / 32)].Add(new Tuple<string, Vec3i>(name, new Vec3i(x, y, z)));
-                        }
-                        else
-                        {
-                            auxBanksDictionary[new Vec2i(x / 32, z / 32)] = new List<Tuple<string, Vec3i>>
-                            {
-                                new Tuple<string, Vec3i>(name, new Vec3i(x, y, z))
-                            };
-                        }
-                    }
-
-                    connection.Close();
-                }
-            }
-            catch (SqliteException ex)
-            {
-                //MessageHandler.sendErrorMsg("initTables::" + ex.Message);
-                return false;
-            }
-
-            return true;
-
-        }
-        public bool deposit(string accountName, double amount)
+ 
+        public OperationResult deposit(string accountName, decimal amount)
         {
             if (accountName.StartsWith(caneconomy.config.GLOBAL_ACCOUNT_NAME))
             {
@@ -217,14 +186,14 @@ namespace caneconomy.src.implementations.RealMoney
                     mapCityBanks.TryGetValue(caneconomy.config.GLOBAL_ACCOUNT_NAME, out RealBankInfo rbi);
                     rbi.setLastKnownValue(rbi.getLastKnownValue() + amount);
                     updateAccount(accountName, rbi);
-                    return true;
+                    return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
-                return false;
+                return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
             }
 
             if (!mapCityBanks.ContainsKey(accountName))
             {
-                return false;
+                return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
             }
             else
             {
@@ -234,9 +203,9 @@ namespace caneconomy.src.implementations.RealMoney
                 {
                     mapCityBanks.TryGetValue(accountName, out RealBankInfo rbi);
                     updateAccount(accountName, rbi);
-                    return true;
+                    return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
-                return false;
+                return new OperationResult(EnumOperationResultState.FAILED_TARGET_DEPOSIT);
             }
             
 
@@ -268,13 +237,13 @@ namespace caneconomy.src.implementations.RealMoney
                 auxBanksDictionary.Remove(new Vec2i(tmp.X / 32, tmp.Z / 32));
 
             mapCityBanks.Remove(accountName);
-            Dictionary<string, object> dict = new Dictionary<string, object>();
-            dict.Add("accountname", accountName);
-
-            if (caneconomy.getDatabaseHandler() is SQLiteDatabaseHanlder sqlhandler)
+            Dictionary<string, object> dict = new Dictionary<string, object>
             {
-                sqlhandler.deleteFromDatabase(new QuerryInfo("BANKS", QuerryType.DELETE, dict));
-            }
+                { "accountname", accountName }
+            };
+
+            databaseHandler.deleteFromDatabase(new QuerryInfo( QuerryType.DELETE, dict));
+            
             return true;
 
         }
@@ -291,12 +260,10 @@ namespace caneconomy.src.implementations.RealMoney
                     { "validcachedvalue", bankInfo.getValidCachedValue() }
                 };
 
-            if (caneconomy.getDatabaseHandler() is SQLiteDatabaseHanlder sqlhandler)
-            {
-                sqlhandler.updateDatabase(new QuerryInfo("BANKS", QuerryType.UPDATE, dict));
-            }
+            databaseHandler.updateDatabase(new QuerryInfo(QuerryType.UPDATE, dict));
+            
         }
-        public double getBalance(string accountName)
+        public decimal getBalance(string accountName)
         {           
             if(!mapCityBanks.TryGetValue(accountName, out RealBankInfo tmp))
             {
@@ -319,9 +286,9 @@ namespace caneconomy.src.implementations.RealMoney
 
             return countOfItemCoinsInInventory(chest);
         }
-        public double countOfItemCoinsInInventory(BlockEntity chest)
+        public decimal countOfItemCoinsInInventory(BlockEntity chest)
         {
-            double countOfItems = 0;
+            decimal countOfItems = 0;
             foreach (ItemSlot itemSlot in (chest as BlockEntityGenericTypedContainer).Inventory)
             {
                 ItemStack iS = itemSlot.Itemstack;
@@ -354,50 +321,56 @@ namespace caneconomy.src.implementations.RealMoney
             }
             return false;
         }
-        public bool newAccount(string accountName, Vec3i pos)
+        public bool newAccount(string accountName, Dictionary<string, object> additionalInfoNewAccount)
         {
-            if (caneconomy.getDatabaseHandler() is SQLiteDatabaseHanlder sqlhandler)
+            Vec3i pos = new Vec3i();
+            if(additionalInfoNewAccount.TryGetValue("chestPos", out object posObject))
             {
-                RealBankInfo tmp;
-                mapCityBanks.TryGetValue(accountName, out tmp);
-                // No updates here
-                if (tmp != null && tmp.getChestCoors().X == pos.X && tmp.getChestCoors().Y == pos.Y && tmp.getChestCoors().Z == pos.Z)
-                {
-                    return false;
-                }
-                mapCityBanks[accountName] = new RealBankInfo(false, 0, 0, pos.Clone(), accountName);//new Vec3i(x, y, z);
-                                                                                            //List for that plot coords exists
-                if (auxBanksDictionary.TryGetValue(new Vec2i(pos.X / 32, pos.Z / 32), out _))
-                {
-                    auxBanksDictionary[new Vec2i(pos.X / 32, pos.Z / 32)].Add(new Tuple<string, Vec3i>(accountName, new Vec3i(pos.X, pos.Y, pos.Z)));
-                }
-                //not exists, create list
-                else
-                {
-                    auxBanksDictionary[new Vec2i(pos.X / 32, pos.Z / 32)] = new List<Tuple<string, Vec3i>>
-                    {
-                        new Tuple<string, Vec3i>(accountName, new Vec3i(pos.X, pos.Y, pos.Z))
-                    };
-                }
-                // Update info or add new bank of city
-                Dictionary<string, object> dict = new Dictionary<string, object>
-                {
-                    { "accountname", accountName },
-                    { "x", pos.X },
-                    { "y", pos.Y },
-                    { "z", pos.Z },
-                    { "dirty", 0 },
-                    { "lastknownvalue", 0 },
-                    { "validcachedvalue", 0 }
-                };
-                List<string> li = new List<string> { "accountname" };
-
-                sqlhandler.insertToDatabase(new QuerryInfo("BANKS", QuerryType.INSERT, dict));
-                return true;
+                pos = (Vec3i)posObject;
             }
+
+            RealBankInfo tmp;
+            mapCityBanks.TryGetValue(accountName, out tmp);
+            // No updates here
+            if (tmp != null && tmp.getChestCoors().X == pos.X && tmp.getChestCoors().Y == pos.Y && tmp.getChestCoors().Z == pos.Z)
+            {
+                return false;
+            }
+            mapCityBanks[accountName] = new RealBankInfo(false, 0, 0, pos.Clone(), accountName);//new Vec3i(x, y, z);
+                                                                                        //List for that plot coords exists
+            if (auxBanksDictionary.TryGetValue(new Vec2i(pos.X / 32, pos.Z / 32), out _))
+            {
+                auxBanksDictionary[new Vec2i(pos.X / 32, pos.Z / 32)].Add(new Tuple<string, Vec3i>(accountName, new Vec3i(pos.X, pos.Y, pos.Z)));
+            }
+            //not exists, create list
+            else
+            {
+                auxBanksDictionary[new Vec2i(pos.X / 32, pos.Z / 32)] = new List<Tuple<string, Vec3i>>
+                {
+                    new Tuple<string, Vec3i>(accountName, new Vec3i(pos.X, pos.Y, pos.Z))
+                };
+            }
+            // Update info or add new bank of city
+            Dictionary<string, object> dict = new Dictionary<string, object>
+            {
+                { "accountname", accountName },
+                { "x", pos.X },
+                { "y", pos.Y },
+                { "z", pos.Z },
+                { "dirty", 0 },
+                { "lastknownvalue", 0 },
+                { "validcachedvalue", 0 }
+            };
+            List<string> li = new List<string> { "accountname" };
+
+            databaseHandler.insertToDatabase(new QuerryInfo(QuerryType.INSERT, dict));
+            return true;
+        }
+        public bool updateAccount(string account, Dictionary<string, object> additionalInfoUpdateAccount = null)
+        {
             return false;
         }
-        public bool withdraw(string accountName, double amount)
+        public OperationResult withdraw(string accountName, decimal amount)
         {
             if (accountName.StartsWith(caneconomy.config.GLOBAL_ACCOUNT_NAME))
             {
@@ -406,14 +379,14 @@ namespace caneconomy.src.implementations.RealMoney
                     mapCityBanks.TryGetValue(caneconomy.config.GLOBAL_ACCOUNT_NAME, out RealBankInfo rbi);
                     rbi.setLastKnownValue(rbi.getLastKnownValue() - amount);
                     updateAccount(accountName, rbi);
-                    return true;
+                    return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
-                return false;
+                return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
             }
 
             if (!mapCityBanks.ContainsKey(accountName))
             {
-                return false;
+                return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
             }
             else
             {
@@ -422,9 +395,9 @@ namespace caneconomy.src.implementations.RealMoney
                 if (InventoryHandling.deleteChestInventoryAmountOfItems(tmp.getChestCoors(), (int)amount, accountName))
                 {
                     updateAccount(accountName, tmp);
-                    return true;
+                    return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
-                return false;
+                return new OperationResult(EnumOperationResultState.SOURCE_ACCOUNT_NOT_FOUND);
             }                   
         }
         public string getAccountInfoAdmin()
@@ -441,7 +414,6 @@ namespace caneconomy.src.implementations.RealMoney
             }
             return sb.ToString();
         }
-
         public void onChunkColumnLoaded(Vec2i chunkCoord, IWorldChunk[] chunks)
         {
             //go through the list of the banks and for using cach changed update context of the banks
@@ -459,7 +431,7 @@ namespace caneconomy.src.implementations.RealMoney
                 {
                     if (tmpBankInfo.getDirty() && tmpBankInfo.getLastKnownValue() != tmpBankInfo.getValidCachedValue())
                     {
-                        double diff = tmpBankInfo.getLastKnownValue() - tmpBankInfo.getValidCachedValue();
+                        decimal diff = tmpBankInfo.getLastKnownValue() - tmpBankInfo.getValidCachedValue();
                         if (!chunks[pair.Item2.Y / 32].BlockEntities.TryGetValue(new BlockPos(pair.Item2), out BlockEntity be))
                         {
                             continue;
@@ -500,7 +472,7 @@ namespace caneconomy.src.implementations.RealMoney
                         return;
                     }
                     RealBankInfo tmpBankInfo;
-                    double valueInChest = countOfItemCoinsInInventory(chest);
+                    decimal valueInChest = countOfItemCoinsInInventory(chest);
                     if (TryGetRealBankInfo(pair.Item1, out tmpBankInfo))
                     {
                         return;
@@ -512,6 +484,11 @@ namespace caneconomy.src.implementations.RealMoney
                     updateAccount(pair.Item1, tmpBankInfo);
                 }
             } 
+        }
+
+        public OperationResult depositFromAToB(string accountA, string accountB, decimal quantity)
+        {
+            throw new NotImplementedException();
         }
     }
 }

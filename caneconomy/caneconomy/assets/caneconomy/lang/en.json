@@ -1,3 +1,20 @@
 {
-    "hello": "hello world!"
+  "need_number_greater_than_zero": "Need number greater than 0",
+  "deposit_failed": "Deposit failed",
+  "own_account_not_found": "Account not found",
+  "successfully_paid": "Successfully paid {0} to {1}",
+  "wrong_parameter+value": "Wrong value.",
+  "not_enough_money": "Not enough money",
+  "withdraw_failed": "Withdraw failed",
+  "placeholder_return": "Placeholder value.",
+
+  "own_balance_state": "Balance: {0}",
+  "target_account_not_found": "Target account not found",
+
+
+
+
+  "number_withdrawned": "Withdrawn {0} from account",
+  "number_deposited": "{0} added to account",
+  "no_currency_item_found": "No money in the hand"
 }

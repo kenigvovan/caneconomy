@@ -10,12 +10,12 @@ namespace caneconomy.src.implementations.RealMoney
     public class RealBankInfo
     {
         bool dirty;
-        double lasknownvalue;
-        double validcachedvalue;
+        decimal lasknownvalue;
+        decimal validcachedvalue;
         Vec3i chestCoors;
         public string AccountName {  get; set; }
 
-        public RealBankInfo(bool dirty, double lasknownvalue, double validcachedvalue, Vec3i chestCoors, string accountName)
+        public RealBankInfo(bool dirty, decimal lasknownvalue, decimal validcachedvalue, Vec3i chestCoors, string accountName)
         {
             this.dirty = dirty;
             this.lasknownvalue = lasknownvalue;
@@ -32,11 +32,11 @@ namespace caneconomy.src.implementations.RealMoney
             return dirty;
         }
 
-        public double getLastKnownValue()
+        public decimal getLastKnownValue()
         {
             return lasknownvalue;
         }
-        public double getValidCachedValue()
+        public decimal getValidCachedValue()
         {
             return validcachedvalue;
         }
@@ -45,11 +45,11 @@ namespace caneconomy.src.implementations.RealMoney
             dirty = val;
         }
 
-        public void setValidCachedValue(double val)
+        public void setValidCachedValue(decimal val)
         {
             validcachedvalue = val;
         }
-        public void setLastKnownValue(double val)
+        public void setLastKnownValue(decimal val)
         {
             lasknownvalue = val;
         }

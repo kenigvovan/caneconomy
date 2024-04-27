@@ -5,8 +5,8 @@
     "authors": [
         "KenigVovan"
     ],
-    "description": "To be added",
-    "version": "1.0.0",
+    "description": "Economy handler",
+    "version": "1.0.3",
     "dependencies": {
         "game": ""
     }
