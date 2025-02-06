@@ -1,0 +1,21 @@
+{
+  "_comentarios": "Traducido por C4BR3R4 || Versión del Mod: 1.0.8 || Fecha de modificación: 20250203 || Registro: http://c4br3r4.es/index.php?topic=1304.0",
+  "need_number_greater_than_zero": "Debe ser un número mayor de 0.",
+  "deposit_failed": "Fallo al ingresar.",
+  "own_account_not_found": "No se ha encontrado la cuenta.",
+  "successfully_paid": "Has pagado correctamente {0} a {1}.",
+  "wrong_parameter+value": "Valor incorrecto.",
+  "not_enough_money": "No tienes suficiente dinero.",
+  "withdraw_failed": "Fallo al retirar.",
+  "placeholder_return": "Valor del Placeholder.",
+
+  "own_balance_state": "Saldo: {0}",
+  "target_account_not_found": "No se ha encontrado la cuenta de destino",
+
+
+
+
+  "number_withdrawned": "Se ha retirado {0} de la cuenta.",
+  "number_deposited": "Se ha añadido {0} a la cuenta.",
+  "no_currency_item_found": "No llevas dinero en la mano."
+}
