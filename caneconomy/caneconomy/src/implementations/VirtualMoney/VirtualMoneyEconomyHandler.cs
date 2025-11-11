@@ -1,21 +1,15 @@
-﻿using caneconomy.src.accounts;
-using caneconomy.src.db;
-using caneconomy.src.implementations.RealMoney;
-using caneconomy.src.interfaces;
-using Microsoft.Data.Sqlite;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
+using caneconomy.src.accounts;
+using caneconomy.src.db;
+using caneconomy.src.interfaces;
+using Microsoft.Data.Sqlite;
 using Vintagestory.API.Common;
 using Vintagestory.API.Config;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using static caneconomy.src.implementations.OperationResult;
 
@@ -43,6 +37,11 @@ namespace caneconomy.src.implementations.VirtualMoney
             }
             catch (SqliteException ex)
             {
+                caneconomy.sapi.Logger.Error("VirtualMoneyEconomyHandler init error: " + ex);
+            }
+            if(databaseHandler == null)
+            {
+                caneconomy.sapi.Logger.Error("SQLiteDatabaseHanlder wasn't created properly. Probably wrong path.");
             }
             databaseHandler.readALL();
             this.InitServer();
@@ -104,7 +103,7 @@ namespace caneconomy.src.implementations.VirtualMoney
         {
             if (!Accounts.TryGetValue(player.PlayerUID, out VirtualMoneyAccount vma))
             {
-                newAccount(player.PlayerUID, new Dictionary<string, object> { { "lastknownname", player.PlayerName } });
+                 newAccount(player.PlayerUID, new Dictionary<string, object> { { "lastknownname", player.PlayerName } });
             }
             else
             {
@@ -278,7 +277,12 @@ namespace caneconomy.src.implementations.VirtualMoney
                 return TextCommandResult.Success(Lang.Get("caneconomy:need_number_greater_than_zero"));
             }
 
-            OperationResult resultValue = depositFromAToB(player.PlayerUID, receiver, payValue);
+            if(!tryGetAccountByLastKnownName(receiver, out VirtualMoneyAccount receiverAccount))
+            {
+                return TextCommandResult.Success(Lang.Get("caneconomy:deposit_failed"));
+            }
+
+            OperationResult resultValue = depositFromAToB(player.PlayerUID, receiverAccount.LastKnownName, payValue);
 
             switch (resultValue.ResultState)
             {
@@ -413,7 +417,7 @@ namespace caneconomy.src.implementations.VirtualMoney
                 return new OperationResult(EnumOperationResultState.SOURCE_ACCOUNT_NOT_FOUND);
             }
 
-            if (!AccountsByName.TryGetValue(accountB, out VirtualMoneyAccount receiverVMA))
+            if (!Accounts.TryGetValue(accountB, out VirtualMoneyAccount receiverVMA))
             {
                 return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
             }
@@ -455,6 +459,16 @@ namespace caneconomy.src.implementations.VirtualMoney
                 return new OperationResult(EnumOperationResultState.FAILED_TARGET_DEPOSIT);
             }
 
+        }
+
+        public bool tryGetAccountByLastKnownName(string lastKnownName, out VirtualMoneyAccount acoount)
+        {
+            if (!AccountsByName.TryGetValue(lastKnownName, out acoount))
+            {
+                return true;
+            }
+            acoount = null;
+            return false;
         }
     }
 }

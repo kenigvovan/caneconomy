@@ -1,12 +1,6 @@
-﻿using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
+﻿using System.Collections.Concurrent;
 using System.IO;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
+using Microsoft.Data.Sqlite;
 using Vintagestory.API.Config;
 
 namespace caneconomy.src.db
@@ -27,13 +21,20 @@ namespace caneconomy.src.db
             DELETE_QUERRY = delete_q;
             this.OnReadAction = OnReadAction;
             string folderPath;
-            if (caneconomy.config.PATH_TO_DB_AND_JSON_FILES.Length == 0)
+            if(caneconomy.config.PATH_TO_DB_AND_JSON_FILES.Length != 0)
             {
-                folderPath = @"" + Path.Combine(GamePaths.ModConfig, caneconomy.config.DB_NAME);
+                if (Path.Exists(caneconomy.config.PATH_TO_DB_AND_JSON_FILES))
+                {
+                    folderPath = Path.Combine(caneconomy.config.PATH_TO_DB_AND_JSON_FILES, caneconomy.config.DB_NAME);
+                }
+                else
+                {
+                    folderPath = @"" + Path.Combine(GamePaths.ModConfig, caneconomy.config.DB_NAME);
+                }
             }
             else
             {
-                folderPath = Path.Combine(caneconomy.config.PATH_TO_DB_AND_JSON_FILES, caneconomy.config.DB_NAME);
+                folderPath = @"" + Path.Combine(GamePaths.ModConfig, caneconomy.config.DB_NAME);
             }
             folderPath.Replace(@"\\", @"\");
 

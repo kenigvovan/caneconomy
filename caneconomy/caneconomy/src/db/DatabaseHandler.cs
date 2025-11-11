@@ -1,16 +1,4 @@
-﻿using caneconomy.src.accounts;
-using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.Common;
-using Vintagestory.API.Config;
-using Vintagestory.GameContent;
+﻿using System;
 
 namespace caneconomy.src.db
 {

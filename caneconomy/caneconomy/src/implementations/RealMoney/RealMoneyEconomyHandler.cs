@@ -1,21 +1,15 @@
-﻿using caneconomy.src.accounts;
+﻿using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Globalization;
+using System.Text;
+using caneconomy.src.accounts;
 using caneconomy.src.auxiliary;
 using caneconomy.src.db;
 using caneconomy.src.interfaces;
 using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
 using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 using static caneconomy.src.implementations.OperationResult;
 
@@ -79,8 +73,8 @@ namespace caneconomy.src.implementations.RealMoney
                         new RealBankInfo(it["dirty"].ToString().Equals("0")
                                                                                 ? false
                                                                                 : true,
-                                            decimal.Parse(it["lastknownvalue"].ToString()),
-                                            decimal.Parse(it["validcachedvalue"].ToString()),
+                                            decimal.Parse(it["lastknownvalue"].ToString(), CultureInfo.InvariantCulture),
+                                            decimal.Parse(it["validcachedvalue"].ToString(), CultureInfo.InvariantCulture),
                                             new Vec3i(x, y, z),
                                             name));
                     if (it["dirty"].ToString().Equals("0") ? false : true)
@@ -473,7 +467,7 @@ namespace caneconomy.src.implementations.RealMoney
                     }
                     RealBankInfo tmpBankInfo;
                     decimal valueInChest = countOfItemCoinsInInventory(chest);
-                    if (TryGetRealBankInfo(pair.Item1, out tmpBankInfo))
+                    if (!TryGetRealBankInfo(pair.Item1, out tmpBankInfo))
                     {
                         return;
                     }
@@ -487,6 +481,11 @@ namespace caneconomy.src.implementations.RealMoney
         }
 
         public OperationResult depositFromAToB(string accountA, string accountB, decimal quantity)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool tryGetAccountByLastKnownName(string lastKnownName, out VirtualMoneyAccount acoount)
         {
             throw new NotImplementedException();
         }

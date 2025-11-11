@@ -1,11 +1,6 @@
-﻿using caneconomy.src.db;
+﻿using System.Collections.Generic;
+using caneconomy.src.accounts;
 using caneconomy.src.implementations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Vintagestory.API.MathTools;
 
 namespace caneconomy.src.interfaces
 {
@@ -20,5 +15,6 @@ namespace caneconomy.src.interfaces
         OperationResult depositFromAToB(string accountA, string accountB, decimal quantity);
         bool accountExist(string account);
         string getAccountInfoAdmin();
+        bool tryGetAccountByLastKnownName(string lastKnownName, out VirtualMoneyAccount acoount);
     }
 }

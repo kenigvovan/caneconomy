@@ -1,18 +1,11 @@
-﻿using caneconomy.src;
-using caneconomy.src.db;
+﻿using System;
+using caneconomy.src;
 using caneconomy.src.harmony;
 using caneconomy.src.implementations.RealMoney;
 using caneconomy.src.implementations.VirtualMoney;
 using caneconomy.src.interfaces;
 using HarmonyLib;
-using Microsoft.Data.Sqlite;
-using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using Vintagestory.API.Client;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
-using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
@@ -36,11 +29,13 @@ namespace caneconomy
         {
             sapi = api;
             loadConfig();
-            economyHandler = new RealMoneyEconomyHandler();
+            var now = DateTime.Now;
+            now.TimeOfDay.ToString("hh\\:mm\\:ss");
+            //economyHandler = new RealMoneyEconomyHandler();
             harmonyInstance = new Harmony(harmonyID);
-
-            harmonyInstance.Patch(typeof(BlockEntityOpenableContainer).GetMethod("OnBlockRemoved"), prefix: new HarmonyMethod(typeof(harmPatches).GetMethod("Prefix_OnBlockRemoved")));
-            harmonyInstance.Patch(typeof(BlockEntitySign).GetMethod("OnReceivedClientPacket"), prefix: new HarmonyMethod(typeof(harmPatches).GetMethod("Prefix_Gui_OnButtonSave")));
+            var p = now.TimeOfDay.ToString("hh\\:mm\\:ss");
+            harmonyInstance.Patch(typeof(BlockEntityOpenableContainer).GetMethod("OnBlockRemoved"), postfix: new HarmonyMethod(typeof(harmPatches).GetMethod("Prefix_OnBlockRemoved")));
+            harmonyInstance.Patch(typeof(BlockEntitySign).GetMethod("OnReceivedClientPacket"), postfix: new HarmonyMethod(typeof(harmPatches).GetMethod("Prefix_Gui_OnButtonSave")));
            // harmonyInstance.PatchAll();
 
             sapi.Event.ServerRunPhase(EnumServerRunPhase.RunGame, getMoneyItemID);

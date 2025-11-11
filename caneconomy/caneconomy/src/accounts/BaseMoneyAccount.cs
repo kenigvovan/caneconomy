@@ -1,10 +1,4 @@
-﻿using caneconomy.src.implementations;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static caneconomy.src.implementations.OperationResult;
+﻿using static caneconomy.src.implementations.OperationResult;
 
 namespace caneconomy.src.accounts
 {

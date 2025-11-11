@@ -1,17 +1,5 @@
-﻿using caneconomy.src.implementations.RealMoney;
-using HarmonyLib;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Security.Claims;
-using System.Text;
-using System.Threading.Tasks;
+﻿using HarmonyLib;
 using Vintagestory.API.Common;
-using Vintagestory.API.Config;
-using Vintagestory.API.MathTools;
-using Vintagestory.API.Server;
-using Vintagestory.GameContent;
-using static caneconomy.caneconomy;
 
 namespace caneconomy.src.harmony
 {
