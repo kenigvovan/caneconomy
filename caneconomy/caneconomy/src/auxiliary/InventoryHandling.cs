@@ -10,6 +10,7 @@ namespace caneconomy.src.auxiliary
     public class InventoryHandling
     {
         //Search for itemID item in backpacks and in hotbar
+        //not used
         public static int countOfItemInInventory(IServerPlayer player)
         {
             int countOfItems = 0;
@@ -131,52 +132,55 @@ namespace caneconomy.src.auxiliary
                         continue;
                     }
                     //Item is a coin
-                    if (caneconomy.config.ID_TO_COINS_VALUES.ContainsKey(iS.Id))
+                    foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
                     {
-
-                        int tmp = ((int)caneconomy.config.ID_TO_COINS_VALUES[iS.Id] * iS.StackSize) - amount;
-                        //Slot has greater or equal value than we need
-                        if (tmp >= 0)
+                        var coinData = it.Value;
+                        if(iS.Id.Equals(coinData.CollectibleId))
                         {
-                            int coinsTaken = amount / (int)caneconomy.config.ID_TO_COINS_VALUES[iS.Id];
-                            if (amount % caneconomy.config.ID_TO_COINS_VALUES[iS.Id] > 0)
+                            int tmp = ((int)coinData.CoinValue * iS.StackSize) - amount;
+                            //Slot has greater or equal value than we need
+                            if (tmp >= 0)
                             {
-                                coinsTaken++;
+                                int coinsTaken = amount / (int)coinData.CoinValue;
+                                if (amount % coinData.CoinValue > 0)
+                                {
+                                    coinsTaken++;
+                                }
+                                //If we take all coins
+                                if (coinsTaken >= iS.StackSize)
+                                {
+                                    itemSlot.Itemstack = null;
+                                }
+                                else
+                                {
+                                    iS.StackSize -= coinsTaken;
+                                }
+                                if (itemSlot?.Itemstack?.Item != null)
+                                {
+                                    itemSlot.MarkDirty();
+                                }
+                                //We place difference back in the chest
+                                if (amount % coinData.CoinValue > 0)
+                                {
+                                    //False because we already locked put/take operations for inventory
+                                    //I await that it won't fail, because it can spawn ItemEntity if there is not free space
+                                    addToChestInventoryAmountOfItems(pos, (int)(coinData.CoinValue - (amount % coinData.CoinValue)), entity, false);
+                                }
+                                (entity as BlockEntityGenericTypedContainer).Inventory.TakeLocked = false;
+                                (entity as BlockEntityGenericTypedContainer).Inventory.PutLocked = false;
+                                return true;
                             }
-                            //If we take all coins
-                            if (coinsTaken >= iS.StackSize)
-                            {
-                                itemSlot.Itemstack = null;
-                            }
+                            //Slot has less than we need
                             else
                             {
-                                iS.StackSize -= coinsTaken;
+                                amount -= (int)coinData.CoinValue * iS.StackSize;
+                                itemSlot.Itemstack = null;
+                                if (itemSlot?.Itemstack?.Item != null)
+                                {
+                                    itemSlot.MarkDirty();
+                                }
+                                continue;
                             }
-                            if (itemSlot?.Itemstack?.Item != null)
-                            {
-                                itemSlot.MarkDirty();
-                            }
-                            //We place difference back in the chest
-                            if (amount % caneconomy.config.ID_TO_COINS_VALUES[iS.Id] > 0)
-                            {
-                                //False because we already locked put/take operations for inventory
-                                //I await that it won't fail, because it can spawn ItemEntity if there is not free space
-                                addToChestInventoryAmountOfItems(pos, (int)(caneconomy.config.ID_TO_COINS_VALUES[iS.Id] - (amount % caneconomy.config.ID_TO_COINS_VALUES[iS.Id])), entity, false);
-                            }
-                            (entity as BlockEntityGenericTypedContainer).Inventory.TakeLocked = false;
-                            (entity as BlockEntityGenericTypedContainer).Inventory.PutLocked = false;
-                            return true;
-                        }
-                        //Slot has less than we need
-                        else
-                        {
-                            amount -= (int)caneconomy.config.ID_TO_COINS_VALUES[iS.Id] * iS.StackSize;
-                            itemSlot.Itemstack = null;
-                            if (itemSlot?.Itemstack?.Item != null)
-                            {
-                                itemSlot.MarkDirty();
-                            }
-                            continue;
                         }
                     }
                 }
@@ -189,7 +193,8 @@ namespace caneconomy.src.auxiliary
             }
             return false;
         }
-        public static bool deleteFromInventoryAmountOfItems(IServerPlayer player, int amount)
+        //not used
+       /* public static bool deleteFromInventoryAmountOfItems(IServerPlayer player, int amount)
         {
             //Check backpacks and hotbar
             int savedAmount = amount;
@@ -316,7 +321,7 @@ namespace caneconomy.src.auxiliary
             playerHotbar.PutLocked = false;
             addToInventoryAmountOfItems(savedAmount - amount, player, false);
             return false;
-        }
+        }*/
 
         public static bool addToChestInventoryAmountOfItems(Vec3i pos, int amount, string accountname)
         {
@@ -349,21 +354,23 @@ namespace caneconomy.src.auxiliary
                     //Slot is empty, place here some coins
                     if (iS == null)
                     {
-                        foreach (var coinType in caneconomy.config.COINS_VALUES_TO_CODE)
+                        foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
                         {
-                            int fullCoins = amount / (int)coinType.Key;
-                            if (fullCoins > caneconomy.config.MAX_AMOUNT_COINS_IN_STACK)
+                            var coinData = it.Value;
+                            var coinItem = caneconomy.sapi.World.GetItem(new AssetLocation(coinData.CollectibleCode));
+                            int fullCoins = amount / (int)coinData.CoinValue;
+                            if (fullCoins > coinItem.MaxStackSize)
                             {
-                                fullCoins = caneconomy.config.MAX_AMOUNT_COINS_IN_STACK;
+                                fullCoins = coinItem.MaxStackSize;
                             }
                             if (fullCoins < 1)
                             {
                                 continue;
                             }
-                            ItemStack newIS = new ItemStack(caneconomy.sapi.World.GetItem(new AssetLocation(coinType.Value)));
+                            ItemStack newIS = new ItemStack(coinItem);
                             newIS.StackSize = fullCoins;
                             iS = newIS;
-                            amount -= fullCoins * (int)coinType.Key;
+                            amount -= fullCoins * (int)coinData.CoinValue;
                             itemSlot.Itemstack = newIS;
                             if (itemSlot?.Itemstack?.Item != null)
                             {
@@ -378,47 +385,56 @@ namespace caneconomy.src.auxiliary
                         continue;
                     }
                     //Here is already some coin item, try to place more here of the same
-                    else if (caneconomy.config.ID_TO_COINS_VALUES.ContainsKey(iS.Id))
+                    else
                     {
-                        int fullCoins = amount / (int)caneconomy.config.ID_TO_COINS_VALUES[iS.Id];
-                        //Slot can not fit everything
-                        if (fullCoins + iS.StackSize >= caneconomy.config.MAX_AMOUNT_COINS_IN_STACK)
+                        foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
                         {
-                            fullCoins = caneconomy.config.MAX_AMOUNT_COINS_IN_STACK - iS.StackSize;
-                        }
-                        //Full
-                        if (fullCoins == 0)
-                        {
-                            continue;
-                        }
-                        iS.StackSize += fullCoins;
-                        amount -= fullCoins * (int)caneconomy.config.ID_TO_COINS_VALUES[iS.Id];
-                        if (amount < 0)
-                        {
-                            if (shouldLock)
+                            var coinData = it.Value;
+                            if (it.Value.CollectibleId.Equals(iS.Id))
                             {
-                                (entity as BlockEntityGenericTypedContainer).Inventory.TakeLocked = false;
-                                (entity as BlockEntityGenericTypedContainer).Inventory.PutLocked = false;
+                                int fullCoins = amount / (int)coinData.CoinValue;
+                                //Slot can not fit everything
+                                if (fullCoins + iS.StackSize >= iS.Item.MaxStackSize)
+                                {
+                                    fullCoins = iS.Item.MaxStackSize - iS.StackSize;
+                                }
+                                //Full
+                                if (fullCoins == 0)
+                                {
+                                    continue;
+                                }
+                                iS.StackSize += fullCoins;
+                                amount -= (int)(fullCoins * coinData.CoinValue);
+                                if (amount < 0)
+                                {
+                                    if (shouldLock)
+                                    {
+                                        (entity as BlockEntityGenericTypedContainer).Inventory.TakeLocked = false;
+                                        (entity as BlockEntityGenericTypedContainer).Inventory.PutLocked = false;
+                                    }
+                                    return true;
+                                }
+                                if (itemSlot?.Itemstack?.Item != null)
+                                {
+                                    itemSlot.MarkDirty();
+                                }
+                                continue;
                             }
-                            return true;
                         }
-                        if (itemSlot?.Itemstack?.Item != null)
-                        {
-                            itemSlot.MarkDirty();
-                        }
-                        continue;
                     }
                 }
                 //Went through all slots, but have to place some more coins
-                foreach (var coinType in caneconomy.config.COINS_VALUES_TO_CODE)
+                foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
                 {
-                    int fullCoins = amount / (int)coinType.Key;
-                    if (fullCoins > caneconomy.config.MAX_AMOUNT_COINS_IN_STACK)
+                    var coinData = it.Value;
+                    int fullCoins = amount / (int)coinData.CoinValue;
+                    var item = caneconomy.sapi.World.GetItem(new AssetLocation(coinData.CollectibleCode));
+                    if (fullCoins > item.MaxStackSize)
                     {
-                        fullCoins = caneconomy.config.MAX_AMOUNT_COINS_IN_STACK;
+                        fullCoins = item.MaxStackSize;
                     }
 
-                    ItemStack newIS = new ItemStack(caneconomy.sapi.World.GetItem(new AssetLocation(coinType.Value)));
+                    ItemStack newIS = new ItemStack(item);
                     newIS.StackSize = fullCoins;
                     amount -= fullCoins;
                     caneconomy.sapi.World.SpawnItemEntity(newIS, new Vec3d(pos.X, pos.Y, pos.Z));
@@ -451,20 +467,22 @@ namespace caneconomy.src.auxiliary
         }
         public static bool addToInventoryAmountOfItems(int amount, IServerPlayer player, bool shouldLock = true)
         {
-            foreach (var coinType in caneconomy.config.COINS_VALUES_TO_CODE)
+            foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
             {
-                int fullCoins = amount / (int)coinType.Key;
-                if (fullCoins > caneconomy.config.MAX_AMOUNT_COINS_IN_STACK)
+                var coinData = it.Value;
+                int fullCoins = amount / (int)coinData.CoinValue;
+                var item = caneconomy.sapi.World.GetItem(new AssetLocation(coinData.CollectibleCode));
+                if (fullCoins > item.MaxStackSize)
                 {
-                    fullCoins = caneconomy.config.MAX_AMOUNT_COINS_IN_STACK;
+                    fullCoins = item.MaxStackSize;
                 }
-                ItemStack newIS = new ItemStack(player.Entity.Api.World.GetItem(new AssetLocation(coinType.Value)));
+                ItemStack newIS = new ItemStack(item);
                 if (fullCoins < 1)
                 {
                     continue;
                 }
                 newIS.StackSize = fullCoins;
-                amount -= fullCoins * (int)coinType.Key;
+                amount -= fullCoins * (int)coinData.CoinValue;
                 player.Entity.TryGiveItemStack(newIS);
                 if (amount > 0)
                 {

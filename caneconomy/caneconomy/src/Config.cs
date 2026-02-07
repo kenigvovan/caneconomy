@@ -1,4 +1,11 @@
-﻿using Vintagestory.API.Datastructures;
+﻿using System;
+using System.Collections.Generic;
+using System.Text.Json.Nodes;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
+using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
+using JsonObject = Vintagestory.API.Datastructures.JsonObject;
 
 namespace caneconomy.src
 {
@@ -22,6 +29,35 @@ namespace caneconomy.src
         public string SELECTED_ECONOMY_HANDLER = "VIRTUAL_MONEY";
         public decimal DEFAULT_VALUE_VIRTUAL_ACCOUNT = 0;
         public int MINUTES_BETWEEN_DB_SAVED = 1;
+        public bool EXTENDED_COINS_VALUES_TO_CODE_ENABLED = false;
+        public HashSet<CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PUBLIC = new HashSet<CoinInfo>()
+        { 
+           
+        };
+        public OrderedDictionary<int, CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = new()
+        {
 
+        };
+        public void InitValues()
+        {
+
+            
+        }
+        public class CoinInfo
+        {
+            public decimal CoinValue;
+            public string CollectibleCode;
+            [JsonIgnore]
+            public TreeAttribute CoinAttributes;
+            public string CoinAttributesStr;
+            public int CollectibleId;
+
+            public CoinInfo(decimal CoinValue, string CollectibleCode, TreeAttribute CoinAttributes)
+            {
+                this.CoinValue = CoinValue;
+                this.CollectibleCode = CollectibleCode;
+                this.CoinAttributes = CoinAttributes;
+            }
+        }
     }
 }

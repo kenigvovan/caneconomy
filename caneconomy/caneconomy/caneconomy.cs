@@ -1,11 +1,15 @@
-﻿using System;
-using caneconomy.src;
+﻿using caneconomy.src;
 using caneconomy.src.harmony;
 using caneconomy.src.implementations.RealMoney;
 using caneconomy.src.implementations.VirtualMoney;
 using caneconomy.src.interfaces;
 using HarmonyLib;
+using Newtonsoft.Json.Linq;
+using System;
+using System.Collections;
+using System.Linq;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.Server;
 using Vintagestory.GameContent;
 
@@ -48,6 +52,7 @@ namespace caneconomy
             {
                 config = new Config();
             }
+            config.InitValues();
             sapi.StoreModConfig<Config>(config, this.Mod.Info.ModID + ".json");
             return;
         }
@@ -65,15 +70,47 @@ namespace caneconomy
 
         public static void getMoneyItemID()
         {
-            foreach (var itemVTC in config.COINS_VALUES_TO_CODE)
+            if (!caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_ENABLED)
             {
-                Item[] arrayResult = sapi.World.SearchItems(new AssetLocation(itemVTC.Value));
-
-                if(arrayResult.Length > 0)
+                foreach (var itemVTC in config.COINS_VALUES_TO_CODE)
                 {
-                    config.ID_TO_COINS_VALUES.Add(arrayResult[0].Id, itemVTC.Key);
+                    Item[] arrayResult = sapi.World.SearchItems(new AssetLocation(itemVTC.Value));
+
+                    if (arrayResult.Length > 0)
+                    {
+                        config.ID_TO_COINS_VALUES.Add(arrayResult[0].Id, itemVTC.Key);
+                    }
+                }
+                var sortedEntries = config.COINS_VALUES_TO_CODE.OrderByDescending(it => it.Key).ToList();
+                config.COINS_VALUES_TO_CODE.Clear();
+                foreach (var it in sortedEntries)
+                {
+                    config.COINS_VALUES_TO_CODE.Add(it.Key, it.Value);
                 }
             }
+            else
+            {
+                foreach (var coinInfo in config.EXTENDED_COINS_VALUES_TO_CODE_PUBLIC)
+                {
+                    Item[] arrayResult = sapi.World.SearchItems(new AssetLocation(coinInfo.CollectibleCode));
+                    if (arrayResult.Length > 0)
+                    {
+                        config.ID_TO_COINS_VALUES.Add(arrayResult[0].Id, coinInfo.CoinValue);
+
+                        coinInfo.CoinAttributes = (TreeAttribute)new JsonObject(JToken.Parse(coinInfo.CoinAttributesStr)).ToAttribute();
+                        coinInfo.CollectibleId = arrayResult[0].Id;
+                        config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE.Add(arrayResult[0].Id, coinInfo);
+                    }
+                }
+
+                var sortedEntries = config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE.OrderByDescending(it => it.Value.CoinValue).ToList();
+                config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE.Clear();
+                foreach(var it in sortedEntries)
+                {
+                    config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE.Add(it.Key, it .Value);
+                }
+            }
+           
         }
 
        
