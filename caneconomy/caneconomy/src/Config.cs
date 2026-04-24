@@ -1,11 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using ProtoBuf;
 using System.Collections.Generic;
-using System.Text.Json.Nodes;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using Vintagestory.API.Common;
 using Vintagestory.API.Datastructures;
-using JsonObject = Vintagestory.API.Datastructures.JsonObject;
 
 namespace caneconomy.src
 {
@@ -15,11 +11,11 @@ namespace caneconomy.src
         public string DB_NAME = "caneconomy.db";
         public string GLOBAL_ACCOUNT_NAME = "global_account_server";
         
-        public OrderedDictionary<int, decimal> ID_TO_COINS_VALUES = new OrderedDictionary<int, decimal>()
+        public System.Collections.Generic.OrderedDictionary<int, decimal> ID_TO_COINS_VALUES = new System.Collections.Generic.OrderedDictionary<int, decimal>()
         {
 
         };
-        public OrderedDictionary<decimal, string> COINS_VALUES_TO_CODE = new OrderedDictionary<decimal, string>() {
+        public System.Collections.Generic.OrderedDictionary<decimal, string> COINS_VALUES_TO_CODE = new System.Collections.Generic.OrderedDictionary<decimal, string>() {
                 { 1, "gear-rusty" }
         };
         public bool SAVE_TO_GLOBAL_ACCOUNT = true;
@@ -34,7 +30,7 @@ namespace caneconomy.src
         { 
            
         };
-        public OrderedDictionary<int, CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = new()
+        public System.Collections.Generic.OrderedDictionary<int, CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = new()
         {
 
         };
@@ -43,13 +39,18 @@ namespace caneconomy.src
 
             
         }
+        [ProtoContract]
         public class CoinInfo
         {
+            [ProtoMember(1)]
             public decimal CoinValue;
+            [ProtoMember(2)]
             public string CollectibleCode;
             [JsonIgnore]
             public TreeAttribute CoinAttributes;
+            [ProtoMember(3)]
             public string CoinAttributesStr;
+            [ProtoMember(4)]
             public int CollectibleId;
 
             public CoinInfo(decimal CoinValue, string CollectibleCode, TreeAttribute CoinAttributes)

@@ -48,6 +48,12 @@ namespace caneconomy.src.implementations.RealMoney
             }
             catch (SqliteException ex)
             {
+                caneconomy.sapi.Logger.Error("RealMoneyEconomyHandler init error: " + ex);
+            }
+            if (databaseHandler == null)
+            {
+                caneconomy.sapi.Logger.Error("SQLiteDatabaseHanlder wasn't created properly. Probably wrong path.");
+                return;
             }
             databaseHandler.readALL();
             caneconomy.setHandler(this);
@@ -89,9 +95,9 @@ namespace caneconomy.src.implementations.RealMoney
                     }
 
                     List<Tuple<string, Vec3i>> tmpList;
-                    if (auxBanksDictionary.TryGetValue(new Vec2i(x, z), out tmpList))
+                    if (auxBanksDictionary.TryGetValue(new Vec2i(x / 32, z / 32), out tmpList))
                     {
-                        auxBanksDictionary[new Vec2i(x / 32, z / 32)].Add(new Tuple<string, Vec3i>(name, new Vec3i(x, y, z)));
+                        tmpList.Add(new Tuple<string, Vec3i>(name, new Vec3i(x, y, z)));
                     }
                     else
                     {
@@ -179,7 +185,7 @@ namespace caneconomy.src.implementations.RealMoney
                 {
                     mapCityBanks.TryGetValue(caneconomy.config.GLOBAL_ACCOUNT_NAME, out RealBankInfo rbi);
                     rbi.setLastKnownValue(rbi.getLastKnownValue() + amount);
-                    updateAccount(accountName, rbi);
+                    updateAccount(caneconomy.config.GLOBAL_ACCOUNT_NAME, rbi);
                     return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
                 return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
@@ -292,9 +298,31 @@ namespace caneconomy.src.implementations.RealMoney
                 }
                 else
                 {
-                    if (caneconomy.config.ID_TO_COINS_VALUES.ContainsKey(iS.Id))
+                    foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
                     {
-                        countOfItems += iS.StackSize * caneconomy.config.ID_TO_COINS_VALUES[iS.Id];
+                        var coinData = it.Value;
+                        if(iS.Id.Equals(it.Value.CollectibleId))
+                        {
+                            bool ourCoin = true;
+                            foreach (var attr in coinData.CoinAttributes)
+                            {
+                                if (iS.Attributes.HasAttribute(attr.Key) && iS.Attributes[attr.Key].GetValue().Equals(attr.Value.GetValue()))
+                                {
+                                    continue;
+                                }
+                                else
+                                {
+                                    ourCoin = false;
+                                    break;
+                                }
+                            }
+                            if (ourCoin)
+                            {
+                                countOfItems += iS.StackSize * coinData.CoinValue;
+                                break;
+                            }
+                            
+                        }
                     }
                 }
             }
@@ -366,13 +394,17 @@ namespace caneconomy.src.implementations.RealMoney
         }
         public OperationResult withdraw(string accountName, decimal amount)
         {
+            if(amount <= 0)
+            {
+                return new OperationResult(EnumOperationResultState.SUCCCESS);
+            }
             if (accountName.StartsWith(caneconomy.config.GLOBAL_ACCOUNT_NAME))
             {
                 if (mapCityBanks.ContainsKey(caneconomy.config.GLOBAL_ACCOUNT_NAME))
                 {
                     mapCityBanks.TryGetValue(caneconomy.config.GLOBAL_ACCOUNT_NAME, out RealBankInfo rbi);
                     rbi.setLastKnownValue(rbi.getLastKnownValue() - amount);
-                    updateAccount(accountName, rbi);
+                    updateAccount(caneconomy.config.GLOBAL_ACCOUNT_NAME, rbi);
                     return new OperationResult(EnumOperationResultState.SUCCCESS);
                 }
                 return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
@@ -463,13 +495,13 @@ namespace caneconomy.src.implementations.RealMoney
                     GetBlockEntity(new BlockPos(pair.Item2));
                     if (chest == null)
                     {
-                        return;
+                        continue;
                     }
                     RealBankInfo tmpBankInfo;
                     decimal valueInChest = countOfItemCoinsInInventory(chest);
                     if (!TryGetRealBankInfo(pair.Item1, out tmpBankInfo))
                     {
-                        return;
+                        continue;
                     }
 
                     tmpBankInfo.setValidCachedValue(valueInChest);

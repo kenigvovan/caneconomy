@@ -1,5 +1,6 @@
 ﻿using caneconomy.src.implementations.RealMoney;
 using Vintagestory.API.Common;
+using Vintagestory.API.Datastructures;
 using Vintagestory.API.MathTools;
 using Vintagestory.API.Server;
 using Vintagestory.Common;
@@ -11,7 +12,7 @@ namespace caneconomy.src.auxiliary
     {
         //Search for itemID item in backpacks and in hotbar
         //not used
-        public static int countOfItemInInventory(IServerPlayer player)
+        /*public static int countOfItemInInventory(IServerPlayer player)
         {
             int countOfItems = 0;
             InventoryPlayerBackPacks playerBackpacks = ((InventoryPlayerBackPacks)player.InventoryManager.GetOwnInventory("backpack"));
@@ -49,7 +50,7 @@ namespace caneconomy.src.auxiliary
                 }
             }
             return countOfItems;
-        }
+        }*/
         public static bool cachedBankUsageDelete(Vec3i pos, int amount, string accountname)
         {
             (caneconomy.getHandler() as RealMoneyEconomyHandler).TryGetRealBankInfo(accountname, out RealBankInfo tmp);
@@ -371,6 +372,11 @@ namespace caneconomy.src.auxiliary
                             newIS.StackSize = fullCoins;
                             iS = newIS;
                             amount -= fullCoins * (int)coinData.CoinValue;
+                            var attributeTree = new TreeAttribute();
+                            foreach (var attr in coinData.CoinAttributes)
+                            {
+                                newIS.Attributes[attr.Key] = attr.Value;
+                            }
                             itemSlot.Itemstack = newIS;
                             if (itemSlot?.Itemstack?.Item != null)
                             {
@@ -434,9 +440,13 @@ namespace caneconomy.src.auxiliary
                         fullCoins = item.MaxStackSize;
                     }
 
+                    if (fullCoins < 1)
+                    {
+                        continue;
+                    }
                     ItemStack newIS = new ItemStack(item);
                     newIS.StackSize = fullCoins;
-                    amount -= fullCoins;
+                    amount -= fullCoins * (int)coinData.CoinValue;
                     caneconomy.sapi.World.SpawnItemEntity(newIS, new Vec3d(pos.X, pos.Y, pos.Z));
                     if (amount > 0)
                     {

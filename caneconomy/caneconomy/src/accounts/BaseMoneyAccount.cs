@@ -4,7 +4,7 @@ namespace caneconomy.src.accounts
 {
     public abstract class BaseMoneyAccount
     {
-        string accountName;
+        public string accountName;
         public bool MarkedDirty { get; set; }
         public BaseMoneyAccount(string accountName)
         {

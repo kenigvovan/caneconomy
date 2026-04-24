@@ -43,6 +43,7 @@ namespace caneconomy.src.implementations.VirtualMoney
             if(databaseHandler == null)
             {
                 caneconomy.sapi.Logger.Error("SQLiteDatabaseHanlder wasn't created properly. Probably wrong path.");
+                return;
             }
             databaseHandler.readALL();
             this.InitServer();
@@ -238,94 +239,57 @@ namespace caneconomy.src.implementations.VirtualMoney
             }
         }
         public static void GiveCurrencyItemsToPlayer(IServerPlayer player, decimal withdrawValue)
-        {
-            
+        {            
             decimal tmpWithdrawValue = withdrawValue;
-            if (caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_ENABLED) {
-                foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
-                {
-                    var coinData = it.Value;
-                    if (tmpWithdrawValue < coinData.CoinValue)
-                    {
-                        continue;
-                    }
-                    Item currentItem = caneconomy.sapi.World.GetItem(new AssetLocation(it.Value.CollectibleCode));                
-                    int itemsToGive = (int)(tmpWithdrawValue / coinData.CoinValue);
-
-                    int stacksToGive = (int)(itemsToGive / currentItem.MaxStackSize);
-
-                    for(int i = 0; i < stacksToGive; i++)
-                    {
-                        GiveItemstack(currentItem.MaxStackSize, currentItem, coinData, player);
-                    }
-                    itemsToGive -= (int)(stacksToGive * currentItem.MaxStackSize);
-                    tmpWithdrawValue -= (int)(stacksToGive * currentItem.MaxStackSize * coinData.CoinValue);
-                    int least = (int)(tmpWithdrawValue % currentItem.MaxStackSize);
-                    GiveItemstack(itemsToGive, currentItem, coinData, player);
-                    tmpWithdrawValue -= itemsToGive * coinData.CoinValue;
-                }
-            }
-            else
+            foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
             {
-                foreach (var it in caneconomy.config.COINS_VALUES_TO_CODE)
+                var coinData = it.Value;
+                if (tmpWithdrawValue < coinData.CoinValue)
                 {
-                    if (tmpWithdrawValue < it.Key)
-                    {
-                        continue;
-                    }
-                    Item currentItem = caneconomy.sapi.World.GetItem(new AssetLocation(it.Value));
-                    int itemsToGive = (int)(tmpWithdrawValue / it.Key);
-
-                    int stacksToGive = (int)(itemsToGive / currentItem.MaxStackSize);
-
-                    for (int i = 0; i < stacksToGive; i++)
-                    {
-                        GiveItemstack(currentItem.MaxStackSize, currentItem, player);
-                    }
-                    itemsToGive -= (int)(stacksToGive * currentItem.MaxStackSize);
-                    tmpWithdrawValue -= (int)(stacksToGive * currentItem.MaxStackSize * it.Key);
-                    int least = (int)(tmpWithdrawValue % currentItem.MaxStackSize);
-                    GiveItemstack(itemsToGive, currentItem, player);
-                    tmpWithdrawValue -= itemsToGive * it.Key;
+                    continue;
                 }
+                Item currentItem = caneconomy.sapi.World.GetItem(new AssetLocation(it.Value.CollectibleCode));                
+                int itemsToGive = (int)(tmpWithdrawValue / coinData.CoinValue);
+
+                int stacksToGive = (int)(itemsToGive / currentItem.MaxStackSize);
+
+                for(int i = 0; i < stacksToGive; i++)
+                {
+                    GiveItemstack(currentItem.MaxStackSize, currentItem, coinData, player);
+                }
+                itemsToGive -= (int)(stacksToGive * currentItem.MaxStackSize);
+                tmpWithdrawValue -= (int)(stacksToGive * currentItem.MaxStackSize * coinData.CoinValue);
+                int least = (int)(tmpWithdrawValue % currentItem.MaxStackSize);
+                GiveItemstack(itemsToGive, currentItem, coinData, player);
+                tmpWithdrawValue -= itemsToGive * coinData.CoinValue;
             }
+            
         }
         public static decimal TakeCurrencyItemsFromPlayerActiveSlot(IServerPlayer player)
-        {
-            if (caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_ENABLED)
-            {              
-                foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
-                {
-                    var coinData = it.Value;
-                    var itemStack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
-                    if (itemStack != null && itemStack.Id.Equals(coinData.CollectibleId))
-                    {
-                        bool ourCoin = true;
-                        foreach (var attr in coinData.CoinAttributes)
-                        {
-                            if (itemStack.Attributes.HasAttribute(attr.Key) && itemStack.Attributes[attr.Key].GetValue().Equals(attr.Value.GetValue()))
-                            {
-                                continue;
-                            }
-                            else
-                            {
-                                ourCoin = false;
-                                break;
-                            }
-                        }
-                        if(ourCoin)
-                            return player.InventoryManager.ActiveHotbarSlot.TakeOutWhole().StackSize * coinData.CoinValue;
-                    }
-                }
-            }
-            else
+        {     
+            foreach (var it in caneconomy.config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE)
             {
-                if (player.InventoryManager.ActiveHotbarSlot.Itemstack != null &&
-                    caneconomy.config.ID_TO_COINS_VALUES.TryGetValue(player.InventoryManager.ActiveHotbarSlot.Itemstack.Id, out decimal itemValue))
+                var coinData = it.Value;
+                var itemStack = player.InventoryManager.ActiveHotbarSlot.Itemstack;
+                if (itemStack != null && itemStack.Id.Equals(coinData.CollectibleId))
                 {
-                    return player.InventoryManager.ActiveHotbarSlot.TakeOutWhole().StackSize * itemValue;
+                    bool ourCoin = true;
+                    foreach (var attr in coinData.CoinAttributes)
+                    {
+                        if (itemStack.Attributes.HasAttribute(attr.Key) && itemStack.Attributes[attr.Key].GetValue().Equals(attr.Value.GetValue()))
+                        {
+                            continue;
+                        }
+                        else
+                        {
+                            ourCoin = false;
+                            break;
+                        }
+                    }
+                    if(ourCoin)
+                        return player.InventoryManager.ActiveHotbarSlot.TakeOutWhole().StackSize * coinData.CoinValue;
                 }
-            }
+            }        
             return 0;
         }
         public TextCommandResult BalanceCommand(TextCommandCallingArgs args)
@@ -354,7 +318,7 @@ namespace caneconomy.src.implementations.VirtualMoney
                 return TextCommandResult.Success(Lang.Get("caneconomy:deposit_failed"));
             }
 
-            OperationResult resultValue = depositFromAToB(player.PlayerUID, receiverAccount.LastKnownName, payValue);
+            OperationResult resultValue = depositFromAToB(player.PlayerUID, receiverAccount.accountName, payValue);
 
             switch (resultValue.ResultState)
             {
@@ -535,7 +499,7 @@ namespace caneconomy.src.implementations.VirtualMoney
 
         public bool tryGetAccountByLastKnownName(string lastKnownName, out VirtualMoneyAccount acoount)
         {
-            if (!AccountsByName.TryGetValue(lastKnownName, out acoount))
+            if (AccountsByName.TryGetValue(lastKnownName, out acoount))
             {
                 return true;
             }
