@@ -18,6 +18,8 @@ namespace caneconomy.src.implementations.VirtualMoney
 {
     public class VirtualMoneyEconomyHandler : EconomyHandler
     {
+        public static event Action<string> AccountBalanceChanged;
+
         DatabaseHandler databaseHandler;
         //key is uid for players
         ConcurrentDictionary<string, VirtualMoneyAccount> Accounts;
@@ -371,10 +373,14 @@ namespace caneconomy.src.implementations.VirtualMoney
             }
             if (Accounts.TryGetValue(account, out var foundAccount))
             {
+                EnumOperationResultState state;
                 lock (foundAccount)
                 {
-                    return new OperationResult(foundAccount.deposit(quantity));
+                    state = foundAccount.deposit(quantity);
                 }
+                if (state == EnumOperationResultState.SUCCCESS)
+                    AccountBalanceChanged?.Invoke(account);
+                return new OperationResult(state);
             }
             return new OperationResult(EnumOperationResultState.TARGET_ACCOUNT_NOT_FOUND);
         }
@@ -421,10 +427,14 @@ namespace caneconomy.src.implementations.VirtualMoney
 
             if (Accounts.TryGetValue(account, out var foundAccount))
             {
+                EnumOperationResultState state;
                 lock (foundAccount)
                 {
-                    return new OperationResult(foundAccount.withdraw(quantity));
+                    state = foundAccount.withdraw(quantity);
                 }
+                if (state == EnumOperationResultState.SUCCCESS)
+                    AccountBalanceChanged?.Invoke(account);
+                return new OperationResult(state);
             }
             return new OperationResult(EnumOperationResultState.SOURCE_ACCOUNT_NOT_FOUND);
         }
@@ -484,6 +494,8 @@ namespace caneconomy.src.implementations.VirtualMoney
             
             if(depositResult == EnumOperationResultState.SUCCCESS)
             {
+                AccountBalanceChanged?.Invoke(accountA);
+                AccountBalanceChanged?.Invoke(accountB);
                 return new OperationResult(EnumOperationResultState.SUCCCESS, new Dictionary<string, object> { { "targetaccountname", receiverVMA .LastKnownName} });
             }
             else
