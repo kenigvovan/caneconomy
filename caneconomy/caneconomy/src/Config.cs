@@ -11,11 +11,11 @@ namespace caneconomy.src
         public string DB_NAME = "caneconomy.db";
         public string GLOBAL_ACCOUNT_NAME = "global_account_server";
         
-        public System.Collections.Generic.OrderedDictionary<int, decimal> ID_TO_COINS_VALUES = new System.Collections.Generic.OrderedDictionary<int, decimal>()
+        public Dictionary<int, decimal> ID_TO_COINS_VALUES = new Dictionary<int, decimal>()
         {
 
         };
-        public System.Collections.Generic.OrderedDictionary<decimal, string> COINS_VALUES_TO_CODE = new System.Collections.Generic.OrderedDictionary<decimal, string>() {
+        public Dictionary<decimal, string> COINS_VALUES_TO_CODE = new Dictionary<decimal, string>() {
                 { 1, "gear-rusty" }
         };
         public bool SAVE_TO_GLOBAL_ACCOUNT = true;
@@ -30,7 +30,7 @@ namespace caneconomy.src
         { 
            
         };
-        public System.Collections.Generic.OrderedDictionary<int, CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = new()
+        public Dictionary<int, CoinInfo> EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = new()
         {
 
         };

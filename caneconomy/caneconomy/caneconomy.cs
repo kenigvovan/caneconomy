@@ -9,6 +9,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using System.Security.Claims;
@@ -50,7 +51,7 @@ namespace caneconomy
             clientChannel.RegisterMessageType(typeof(ConfigUpdateValuesPacket));
             clientChannel.SetMessageHandler<ConfigUpdateValuesPacket>((packet) =>
             {
-                config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = JsonConvert.DeserializeObject<System.Collections.Generic.OrderedDictionary<int, CoinInfo>>(packet.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE);
+                config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE = JsonConvert.DeserializeObject<Dictionary<int, CoinInfo>>(packet.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE);
                 foreach (var coinInfo in config.EXTENDED_COINS_VALUES_TO_CODE_PRIVATE.Values)
                 {
                     if (coinInfo.CoinAttributesStr != null)
